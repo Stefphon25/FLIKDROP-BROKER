@@ -1,5 +1,4 @@
 const express = require("express");
-<<<<<<< HEAD
 const axios = require("axios");
 const path = require("path");
 
@@ -106,7 +105,6 @@ app.post("/generate", (req, res) => {
     </body>
     </html>
   `);
->>>>>>> 2bf5c9f0ffb305fabda179f7007480c667c62348
 });
 
 app.listen(3000, () => {
