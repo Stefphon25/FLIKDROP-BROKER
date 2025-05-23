@@ -10,7 +10,7 @@ app.use(express.json());
 const DRIVER_SERVER_BASE = "https://flikdrop-driver.onrender.com";
 
 app.get("/", (req, res) => {
-  res.send(\`
+  res.send(`
     <html>
       <head>
         <title>Flikdrop - Broker Link Generator</title>
@@ -38,7 +38,7 @@ app.post("/generate", async (req, res) => {
     await axios.post(\`\${DRIVER_SERVER_BASE}/register-load\`, { loadNumber, email });
     const driverLink = \`\${DRIVER_SERVER_BASE}/upload/\${loadNumber}\`;
 
-    res.send(\`
+    res.send(`
       <html>
         <head>
           <title>Upload Link Ready</title>
@@ -109,4 +109,4 @@ app.post("/generate", (req, res) => {
 
 app.listen(3000, () => {
   console.log("Flikdrop BROKER server running on port 3000");
-});
+');
