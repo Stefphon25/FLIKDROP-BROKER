@@ -7,7 +7,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.redirect("/form);
+  res.redirect("/form");
 });
 
 app.get("/form", (req, res) => {
