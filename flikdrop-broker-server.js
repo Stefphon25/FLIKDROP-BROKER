@@ -1,5 +1,6 @@
 
 const express = require("express");
+const axios = require("axios");
 const path = require("path");
 const app = express();
 
@@ -7,7 +8,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.redirect("/form");
+  res.send("Flikdrop Broker Upload Service is Live 🚛📤");
 });
 
 app.get("/form", (req, res) => {
