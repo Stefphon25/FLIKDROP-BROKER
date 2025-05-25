@@ -1,66 +1,63 @@
+
 const express = require("express");
 const axios = require("axios");
 const path = require("path");
-
 const app = express();
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-const DRIVER_SERVICE_URL = "https://flikdrop-driver.onrender.com"; // Update if needed
+app.get("/", (req, res) => {
+  res.send("Flikdrop Broker Upload Service is Live 🚛📤");
+});
 
 app.get("/form", (req, res) => {
   res.send(`
     <!DOCTYPE html>
-    <html lang="en">
+    <html>
     <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-      <title>Register Load</title>
-      <script src="https://cdn.tailwindcss.com"></script>
+      <title>Create Driver Upload Link</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; font-size: 1.2em; }
+        label, input { display: block; margin-bottom: 10px; width: 100%; max-width: 400px; }
+        button { padding: 10px 20px; font-size: 1em; background-color: #4F46E5; color: white; border: none; border-radius: 5px; }
+        .link-output { margin-top: 20px; font-weight: bold; }
+      </style>
     </head>
-    <body class="bg-gray-100 flex items-center justify-center min-h-screen px-4">
-      <form method="POST" action="/register" class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md space-y-4">
-        <h1 class="text-xl font-bold text-center text-gray-800">Flikdrop - Register Load</h1>
-        <input name="loadNumber" placeholder="Load Number" class="w-full p-3 border border-gray-300 rounded-xl" required />
-        <input name="email" placeholder="Accounting Email" type="email" class="w-full p-3 border border-gray-300 rounded-xl" required />
-        <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition">Generate Upload Link</button>
+    <body>
+      <h2>You completed the load! Now drop the Flik ⬇️</h2>
+      <form id="linkForm">
+        <label for="loadNumber">Load Number:</label>
+        <input type="text" id="loadNumber" name="loadNumber" required />
+        <label for="email">Accounting Email:</label>
+        <input type="email" id="email" name="email" required />
+        <button type="submit">Generate Upload Link</button>
       </form>
+      <div class="link-output" id="result"></div>
+      <script>
+        document.getElementById("linkForm").addEventListener("submit", async function(e) {
+          e.preventDefault();
+          const loadNumber = document.getElementById("loadNumber").value;
+          const email = document.getElementById("email").value;
+          const result = document.getElementById("result");
+
+          try {
+            await fetch("https://flikdrop-driver.onrender.com/register-load", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ loadNumber, email })
+            });
+            const link = "https://flikdrop-driver.onrender.com/upload/" + loadNumber;
+            result.innerHTML = "Driver Upload Link: <a href='" + link + "' target='_blank'>" + link + "</a>";
+          } catch (err) {
+            result.textContent = "Failed to generate link.";
+          }
+        });
+      </script>
     </body>
     </html>
   `);
-});
-
-app.post("/register", async (req, res) => {
-  const { loadNumber, email } = req.body;
-  if (!loadNumber || !email) {
-    return res.status(400).send("Missing load number or email.");
-  }
-
-  try {
-    await axios.post(`${DRIVER_SERVICE_URL}/register-load`, { loadNumber, email });
-    const uploadLink = `${DRIVER_SERVICE_URL}/upload/${loadNumber}`;
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-      <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="https://cdn.tailwindcss.com"></script></head>
-      <body class="bg-green-50 flex items-center justify-center min-h-screen px-4">
-        <div class="bg-white p-6 rounded-xl shadow-md text-center">
-          <h2 class="text-xl font-bold text-green-700 mb-2">✅ Upload Link Created</h2>
-          <p class="mb-4">Driver can upload POD using the link below:</p>
-          <a href="${uploadLink}" class="text-blue-600 underline break-all">${uploadLink}</a>
-        </div>
-      </body>
-      </html>
-    `);
-  } catch (error) {
-    console.error("Error registering load:", error.message);
-    res.status(500).send("Error registering load.");
-  }
-});
-
-app.get("/", (req, res) => {
-  res.redirect("/form");
 });
 
 app.listen(3000, () => {
