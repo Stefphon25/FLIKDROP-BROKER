@@ -77,7 +77,8 @@ app.post("/register-load", async (req, res) => {
 
   try {
     // Notify Driver via SMS
-    await twilioClient.messages.create({
+    console.log("Sending to phone:", driverPhone);
+    await client.messages.create({
       body: `Your Flikdrop upload link: https://flikdrop-driver.onrender.com/upload/${loadNumber}`,
       from: process.env.TWILIO_NUMBER,
       to: driverphone
