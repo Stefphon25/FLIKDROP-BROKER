@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/form", (req, res) => {
-  res.send(\`
+  res.send(`
     <!DOCTYPE html>
     <html>
     <head>
@@ -81,7 +81,7 @@ app.post("/register-load", async (req, res) => {
       to: phone.startsWith('+1') ? phone : '+1' + phone.replace(/\D/g, '')
     });
 
-    res.send(\`Driver Upload Link sent: <a href="\${link}" target="_blank">\${link}</a>\`);
+    res.send(`Driver Upload Link sent: <a href="\${link}" target="_blank">\${link}</a>\`);
   } catch (err) {
     console.error("Error sending SMS or registering load:", err);
     res.status(500).send("Failed to send link.");
