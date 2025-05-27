@@ -78,17 +78,17 @@ app.post("/register-load", async (req, res) => {
   try {
     // Notify Driver via SMS
     await twilioClient.messages.create({
-      body: `Flikdrop upload link for Load ${loadNumber}: ${uploadLink}`,
-      from: TWILIO_NUMBER,
-      to: phone
+      body: `Your Flikdrop upload link: https://flikdrop-driver.onrender.com/upload/${loadNumber}`,
+      from: process.env.TWILIO_NUMBER,
+      to: driverphone
     });
 
     // Send to driver server
     await axios.post("https://flikdrop-driver.onrender.com/register-load", { loadNumber, email });
 
-    res.status(200).send("Link sent and load registered.");
+    console.log("✅ Text sent successfully");
   } catch (err) {
-    console.error("Error sending SMS or registering:", err);
+    console.error("❌ Twilio SMS error:", err);
     res.status(500).send("Failed to send SMS or register load.");
   }
 });
