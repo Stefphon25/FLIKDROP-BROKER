@@ -1,14 +1,16 @@
-
 const express = require("express");
 const axios = require("axios");
 const path = require("path");
 const twilio = require("twilio");
+require("dotenv").config();
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
+// Twilio Setup
+const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+const TWILIO_NUMBER = process.env.TWILIO_PHONE;
 
 app.get("/", (req, res) => {
   res.send("Flikdrop Broker Upload Service is Live 🚛📤");
@@ -36,8 +38,8 @@ app.get("/form", (req, res) => {
         <label for="email">Accounting Email:</label>
         <input type="email" id="email" name="email" required />
         <label for="phone">Driver Phone Number:</label>
-        <input type="tel" id="phone" name="phone" required placeholder="+15551234567"/>
-        <button type="submit">Generate Upload Link</button>
+        <input type="tel" id="phone" name="phone" required placeholder="+1234567890" />
+        <button type="submit">Send Driver Upload Link</button>
       </form>
       <div class="link-output" id="result"></div>
       <script>
@@ -54,40 +56,44 @@ app.get("/form", (req, res) => {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ loadNumber, email, phone })
             });
-            const data = await response.text();
-            result.innerHTML = data;
+
+            const link = "https://flikdrop-driver.onrender.com/upload/" + loadNumber;
+            result.innerHTML = "Upload link sent to driver: <a href='" + link + "' target='_blank'>" + link + "</a>";
           } catch (err) {
-            result.textContent = "Failed to generate link.";
+            result.textContent = "Failed to send link.";
           }
         });
       </script>
     </body>
     </html>
-  \`);
+  `);
 });
 
 app.post("/register-load", async (req, res) => {
   const { loadNumber, email, phone } = req.body;
   if (!loadNumber || !email || !phone) return res.status(400).send("Missing required fields.");
 
-  const link = \`https://flikdrop-driver.onrender.com/upload/\${loadNumber}\`;
+  const uploadLink = `https://flikdrop-driver.onrender.com/upload/${loadNumber}`;
 
   try {
-    await axios.post("https://flikdrop-driver.onrender.com/register-load", { loadNumber, email });
-
-    await client.messages.create({
-      body: \`Flikdrop: Upload your POD here → \${link}\`,
-      from: process.env.TWILIO_PHONE,
-      to: phone.startsWith('+1') ? phone : '+1' + phone.replace(/\D/g, '')
+    // Notify Driver via SMS
+    await twilioClient.messages.create({
+      body: `Flikdrop upload link for Load ${loadNumber}: ${uploadLink}`,
+      from: TWILIO_NUMBER,
+      to: phone
     });
 
-    res.send(`Driver Upload Link sent: <a href="\${link}" target="_blank">\${link}</a>\`);
+    // Send to driver server
+    await axios.post("https://flikdrop-driver.onrender.com/register-load", { loadNumber, email });
+
+    res.status(200).send("Link sent and load registered.");
   } catch (err) {
-    console.error("Error sending SMS or registering load:", err);
-    res.status(500).send("Failed to send link.");
+    console.error("Error sending SMS or registering:", err);
+    res.status(500).send("Failed to send SMS or register load.");
   }
 });
 
 app.listen(3000, () => {
   console.log("Flikdrop BROKER server running on port 3000");
 });
+
