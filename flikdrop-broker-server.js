@@ -1,95 +1,130 @@
 const express = require("express");
-const axios = require("axios");
+const multer = require("multer");
+const nodemailer = require("nodemailer");
 const path = require("path");
+const fs = require("fs");
 const twilio = require("twilio");
-require("dotenv").config();
 
 const app = express();
+const upload = multer({ dest: "uploads/" });
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Twilio Setup
-const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+const loadStore = {
+  "test123": { email: process.env.EMAIL_USER || "your@email.com" }
+};
 
+const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
+const FROM_PHONE = process.env.TWILIO_PHONE;
+
+// Broker web form (GET)
 app.get("/", (req, res) => {
-  res.send("Flikdrop Broker Upload Service is Live 🚛📤");
-});
-
-app.get("/form", (req, res) => {
   res.send(`
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
-      <title>Create Driver Upload Link</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; font-size: 1.2em; }
-        label, input { display: block; margin-bottom: 10px; width: 100%; max-width: 400px; }
-        button { padding: 10px 20px; font-size: 1em; background-color: #4F46E5; color: white; border: none; border-radius: 5px; }
-        .link-output { margin-top: 20px; font-weight: bold; }
-      </style>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>Flikdrop Broker</title>
+      <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body>
-      <h2>You completed the load! Now drop the Flik ⬇️</h2>
-      <form id="linkForm">
-        <label for="loadNumber">Load Number:</label>
-        <input type="text" id="loadNumber" name="loadNumber" required />
-        <label for="email">Accounting Email:</label>
-        <input type="email" id="email" name="email" required />
-        <label for="phone">Driver Phone Number:</label>
-        <input type="tel" id="phone" name="phone" required placeholder="+1234567890" />
-        <button type="submit">Send Driver Upload Link</button>
-      </form>
-      <div class="link-output" id="result"></div>
-      <script>
-        document.getElementById("linkForm").addEventListener("submit", async function(e) {
-          e.preventDefault();
-          const loadNumber = document.getElementById("loadNumber").value;
-          const email = document.getElementById("email").value;
-          const phone = document.getElementById("phone").value;
-          const result = document.getElementById("result");
-
-          try {
-            const response = await fetch("/register-load", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ loadNumber, email, phone })
-            });
-
-            const link = "https://flikdrop-driver.onrender.com/upload/" + loadNumber;
-            result.innerHTML = "Upload link sent to driver: <a href='" + link + "' target='_blank'>" + link + "</a>";
-          } catch (err) {
-            result.textContent = "Failed to send link.";
-          }
-        });
-      </script>
+    <body class="bg-gray-100 font-sans">
+      <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="bg-white rounded-3xl shadow-lg max-w-md w-full p-6">
+          <div class="bg-gradient-to-r from-indigo-600 to-blue-500 text-white rounded-2xl p-6 mb-6 text-center">
+            <h1 class="text-2xl font-bold mb-1">Send Upload Link</h1>
+            <p class="text-sm opacity-80">Enter driver info to send POD link</p>
+          </div>
+          <form action="/send-link" method="POST" class="space-y-4">
+            <div>
+              <label class="block text-left text-sm font-medium text-gray-700">Load Number</label>
+              <input type="text" name="loadNumber" required class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
+            </div>
+            <div>
+              <label class="block text-left text-sm font-medium text-gray-700">Driver Phone</label>
+              <input type="text" name="driverPhone" required class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
+            </div>
+            <div>
+              <label class="block text-left text-sm font-medium text-gray-700">Email for POD</label>
+              <input type="email" name="email" required class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-xl hover:bg-indigo-700">Send Link</button>
+          </form>
+        </div>
+      </div>
     </body>
     </html>
   `);
 });
 
-app.post("/register-load", async (req, res) => {
-  const { loadNumber, email, phone } = req.body;
-  if (!loadNumber || !email || !phone) return res.status(400).send("Missing required fields.");
+// Register and send link route
+app.post("/send-link", async (req, res) => {
+  const { loadNumber, email, driverPhone } = req.body;
+  if (!loadNumber || !email || !driverPhone) return res.status(400).send("Missing input.");
 
-  const uploadLink = `https://flikdrop-driver.onrender.com/upload/${loadNumber}`;
+  loadStore[loadNumber] = { email };
+  const uploadUrl = `https://flikdrop-driver.onrender.com/upload/${loadNumber}`;
 
   try {
-    console.log("Sending to phone:", phone);
     await client.messages.create({
-      body: `Your Flikdrop upload link: ${uploadLink}`,
-      from: process.env.TWILIO_NUMBER,
-      to: phone
+      to: driverPhone.startsWith("+") ? driverPhone : `+${driverPhone}`,
+      from: FROM_PHONE,
+      body: `Flikdrop: Tap to upload POD → ${uploadUrl}`
     });
-
-    await axios.post("https://flikdrop-driver.onrender.com/register-load", { loadNumber, email });
-
-    console.log("✅ Text sent successfully");
-    res.status(200).send("Success");
-  } catch (err) {
-    console.error("❌ Twilio SMS error:", err);
-    res.status(500).send("Failed to send SMS or register load.");
+    res.send("<p style='text-align:center;font-family:sans-serif;'>✅ Link sent successfully to driver.</p>");
+  } catch (error) {
+    console.error("❌ Twilio SMS error:", error);
+    res.status(500).send("Failed to send SMS.");
   }
+});
+
+// Existing upload endpoints remain unchanged
+
+app.post("/register-load", express.json(), (req, res) => {
+  const { loadNumber, email } = req.body;
+  if (!loadNumber || !email) return res.status(400).send("Missing load number or email.");
+  loadStore[loadNumber] = { email };
+  res.status(200).send("Load registered successfully.");
+});
+
+app.get("/upload/:loadNumber", (req, res) => {
+  const loadNumber = req.params.loadNumber;
+  const entry = loadStore[loadNumber];
+  if (!entry) return res.status(404).send("Invalid load number.");
+  res.redirect(`/upload/${loadNumber}`);
+});
+
+app.post("/upload/:loadNumber", upload.single("bolImage"), async (req, res) => {
+  const loadNumber = req.params.loadNumber;
+  const entry = loadStore[loadNumber];
+  if (!entry) return res.status(404).send("Invalid load number.");
+  const filePath = req.file.path;
+  const originalName = req.file.originalname;
+  let transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+  try {
+    await transporter.sendMail({
+      from: `"Flikdrop" <${process.env.EMAIL_USER}>`,
+      to: entry.email,
+      subject: `POD for Load ${loadNumber}`,
+      text: `Attached is the signed POD for Load ${loadNumber}.`,
+      attachments: [{ filename: originalName, path: filePath }]
+    });
+    fs.unlinkSync(filePath);
+    res.send("✅ POD submitted and emailed.");
+  } catch (err) {
+    console.error("❌ EMAIL FAILED:", err);
+    res.status(500).send("Upload failed.");
+  }
+});
+
+app.get("/health", (req, res) => {
+  res.send("Flikdrop Broker Service is Live 🚚📨");
 });
 
 app.listen(3000, () => {
