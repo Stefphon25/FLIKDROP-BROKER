@@ -1,15 +1,29 @@
-
 {
   "name": "flikdrop-broker",
   "version": "1.0.0",
+  "description": "Flikdrop Broker Service for managing driver uploads",
   "main": "flikdrop-broker-server.js",
   "scripts": {
-    "start": "node flikdrop-broker-server.js"
+    "start": "node flikdrop-broker-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-"dependencies": {
-  "dotenv": "^16.3.1",
-  "express": "^4.18.2",
-  "axios": "^1.6.7",
-  "twilio": "^4.17.1"
-}
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.2",
+    "twilio": "^4.23.0",
+    "dotenv": "^16.3.1",
+    "multer": "^1.4.4",
+    "nodemailer": "^6.9.4",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^6.7.0"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "keywords": [
+    "flikdrop",
+    "broker",
+    "upload"
+  ],
+  "license": "MIT"
 }
